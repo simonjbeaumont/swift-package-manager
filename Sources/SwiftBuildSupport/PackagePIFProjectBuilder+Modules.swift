@@ -22,6 +22,7 @@ import struct Basics.SourceControlURL
 
 import class PackageModel.Manifest
 import class PackageModel.Module
+import enum PackageModel.ModuleMapType
 import class PackageModel.BinaryModule
 import enum PackageModel.PrebuiltsPlatform
 import class PackageModel.Product
@@ -259,6 +260,7 @@ extension PackagePIFProjectBuilder {
     func configureSwiftTargetModuleMap(
         for sourceModule: PackageGraph.ResolvedModule,
         targetSuffix: TargetSuffix?,
+        pluginGeneratedModuleMap: AbsolutePath?,
         settings: inout BuildSettings,
         impartedSettings: inout BuildSettings
     ) throws -> (contents: String?, path: String?) {
@@ -275,7 +277,8 @@ extension PackagePIFProjectBuilder {
         ).pathString
 
         var cUmbrellaDeclaration: String? = nil
-        switch sourceModule.moduleMapType {
+        // A plugin-generated module map describes the C half of the module, as a custom one does.
+        switch pluginGeneratedModuleMap.map({ ModuleMapType.custom($0) }) ?? sourceModule.moduleMapType {
         case .umbrellaHeader(let path):
             log(.debug, "\(package.name).\(sourceModule.name) generated umbrella header")
             cUmbrellaDeclaration = "umbrella header \"\(path.escapedPathString)\""
@@ -508,6 +511,7 @@ extension PackagePIFProjectBuilder {
             (moduleMapFileContents, moduleMapPath) = try self.configureSwiftTargetModuleMap(
                 for: sourceModule,
                 targetSuffix: targetSuffix,
+                pluginGeneratedModuleMap: generatedFiles.moduleMaps.first,
                 settings: &settings,
                 impartedSettings: &impartedSettings
             )

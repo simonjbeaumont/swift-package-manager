@@ -27,6 +27,7 @@ import SwiftBuild
     enum Kind {
         case cModule
         case swiftModule
+        case mixedModule
     }
 
     let pluginOutputDir: Basics.AbsolutePath = "/plugin-working-dir/outputs/mypkg/MyModule/tools/MyPlugin"
@@ -53,6 +54,12 @@ import SwiftBuild
         case .swiftModule:
             [
                 "/MyPkg/Sources/MyModule/MyModule.swift",
+            ]
+        case .mixedModule:
+            [
+                "/MyPkg/Sources/MyModule/MyModule.swift",
+                "/MyPkg/Sources/MyModule/MyModule.c",
+                "/MyPkg/Sources/MyModule/include/MyModule.h",
             ]
         }
 
@@ -292,6 +299,40 @@ import SwiftBuild
 
         for message in messages {
             #expect(warnings.contains(message))
+        }
+    }
+
+    /// Test that a mixed-language module takes the generated header and module map
+    @Test func testCinMixed() async throws {
+        let observability = ObservabilitySystem.makeForTesting()
+        let pif = try await setup(
+            kind: .mixedModule,
+            gened: [
+                "include/Gened.h",
+                "include/module.modulemap",
+            ],
+            toolsVersion: ToolsVersion(string: "6.5", experimentalFeatures: [.experimentalCGen]),
+            observability: observability.topScope
+        )
+        #expect(!observability.hasErrorDiagnostics)
+        let warnings = observability.warnings.map(\.message)
+        #expect(!warnings.contains { $0.hasPrefix("Only C and mixed-language modules support") })
+
+        let project = try #require(pif.workspace.projects.filter({ $0.underlying.name == "MyPkg" }).only)
+        let modules = project.underlying.targets.filter({ $0.common.name == "MyModule" })
+        for module in modules {
+            for config in module.common.buildConfigs {
+                let headerSearchPaths = try #require(config.settings[.HEADER_SEARCH_PATHS])
+                #expect(headerSearchPaths.contains(pluginIncludeDir.pathString))
+
+                let moduleMapPath = try #require(config.settings[.MODULEMAP_PATH])
+                #expect(moduleMapPath == pluginModuleMapFile.pathString)
+
+                // The Swift half compiles against its own generated C module.
+                let swiftFlags = try #require(config.settings[.OTHER_SWIFT_FLAGS])
+                #expect(swiftFlags.contains("-import-underlying-module"))
+                #expect(swiftFlags.contains(pluginModuleMapArg))
+            }
         }
     }
 
