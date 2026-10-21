@@ -278,10 +278,10 @@ import Build
 
         let warnings = observability.warnings.map(\.message)
         let messages: [String] = [
-            "Only C modules support plugin generated C header files: \(pluginHeaderFile.pathString)",
-            "Only C modules support plugin generated module map files: \(pluginModuleMapFile.pathString)",
-            "Only C modules support plugin generated API notes files: \(pluginAPINotesFile.pathString)",
-            "Only C modules support plugin generated C source files: \(pluginSourceFile.pathString)",
+            "Only C and mixed-language modules support plugin generated C header files: \(pluginHeaderFile.pathString)",
+            "Only C and mixed-language modules support plugin generated module map files: \(pluginModuleMapFile.pathString)",
+            "Only C and mixed-language modules support plugin generated API notes files: \(pluginAPINotesFile.pathString)",
+            "Only C and mixed-language modules support plugin generated C source files: \(pluginSourceFile.pathString)",
         ]
 
         #expect(warnings.count == messages.count)

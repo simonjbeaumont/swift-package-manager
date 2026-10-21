@@ -564,6 +564,9 @@ public struct TargetSourcesBuilder {
     {
         var files = GeneratedFiles()
 
+        // A mixed-language module has a Clang half, so it takes generated C files like a C module does.
+        let moduleHasClangHalf = module is ClangModule || (module as? SwiftModule)?.isMixedLanguage == true
+
         generatedFiles.forEach { absPath in
             // 5.6 handled treated all generated files as sources.
             if toolsVersion <= .v5_6 {
@@ -583,10 +586,10 @@ public struct TargetSourcesBuilder {
                 if absPath.extension == "swift" {
                     files.sources.append(absPath)
                 } else if toolsVersion.experimentalCGen {
-                    if module is ClangModule {
+                    if moduleHasClangHalf {
                         files.sources.append(absPath)
                     } else {
-                        observabilityScope.emit(warning: "Only C modules support plugin generated C source files: \(absPath)")
+                        observabilityScope.emit(warning: "Only C and mixed-language modules support plugin generated C source files: \(absPath)")
                     }
                 } else {
                     observabilityScope.emit(warning: "C source file generation not enabled: \(absPath)")
@@ -599,30 +602,30 @@ public struct TargetSourcesBuilder {
                 }
             case .header:
                 if toolsVersion.experimentalCGen {
-                    if module is ClangModule {
+                    if moduleHasClangHalf {
                         files.headers.append(absPath)
                     } else {
-                        observabilityScope.emit(warning: "Only C modules support plugin generated C header files: \(absPath)")
+                        observabilityScope.emit(warning: "Only C and mixed-language modules support plugin generated C header files: \(absPath)")
                     }
                 } else {
                     observabilityScope.emit(warning: "C header file generation not enabled: \(absPath)")
                 }
             case .modulemap:
                 if toolsVersion.experimentalCGen {
-                    if module is ClangModule {
+                    if moduleHasClangHalf {
                         files.moduleMaps.append(absPath)
                     } else {
-                        observabilityScope.emit(warning: "Only C modules support plugin generated module map files: \(absPath)")
+                        observabilityScope.emit(warning: "Only C and mixed-language modules support plugin generated module map files: \(absPath)")
                     }
                 } else {
                     observabilityScope.emit(warning: "Module map generation not enabled: \(absPath)")
                 }
             case .apinotes:
                 if toolsVersion.experimentalCGen {
-                    if module is ClangModule {
+                    if moduleHasClangHalf {
                         files.apiNotes.append(absPath)
                     } else {
-                        observabilityScope.emit(warning: "Only C modules support plugin generated API notes files: \(absPath)")
+                        observabilityScope.emit(warning: "Only C and mixed-language modules support plugin generated API notes files: \(absPath)")
                     }
                 } else {
                     observabilityScope.emit(warning: "API notes generation not enabled: \(absPath)")
